@@ -18,24 +18,33 @@ if (!fs.existsSync(LOG_DIR)) {
 app.post("/log", (req, res) => {
   const entry = req.body;
 
-  if (!entry || !entry.event || !entry.message) {
+  console.log("[DEBUG] Received payload:", entry);
+
+  // Required fields (userId may be null)
+  if (!entry.action || !entry.timestamp || !entry.source) {
     return res.status(400).json({ error: "Invalid log entry" });
   }
 
-  const timestamp = new Date().toISOString();
-  const line = `[${timestamp}] [${entry.event}] user=${entry.user || "null"} message="${entry.message}"\n`;
+  const logLine =
+    `[${entry.timestamp}] ` +
+    `[${entry.action}] ` +
+    `user=${entry.userId ?? "null"} ` +
+    `message="${entry.details || ""}" ` +
+    `source=${entry.source}\n`;
 
-  fs.appendFile(LOG_FILE, line, (err) => {
+  fs.appendFile("/var/log/fixit/activity.log", logLine, (err) => {
     if (err) {
-      console.error("Failed writing log:", err);
-      return res.status(500).json({ error: "Failed to write log" });
+      console.error("[ERROR] Failed to write log:", err);
+      return res.status(500).json({ error: "Write error" });
     }
-    return res.json({ status: "logged" });
+
+    console.log("[DEBUG] Log written:", logLine);
+    return res.json({ status: "ok" });
   });
 });
 
 // Start server
-const PORT = 6000;
+const PORT = 5001;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Logging server running on port ${PORT}`);
 });
